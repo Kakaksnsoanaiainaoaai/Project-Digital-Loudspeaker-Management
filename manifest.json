@@ -1,0 +1,21 @@
+{
+  "name": "DLMS Web Pro DSP",
+  "short_name": "DLMS DSP",
+  "description": "Digital Loudspeaker Management System Web Application",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3659/3659898.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3659/3659898.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLMS Web - Digital Loudspeaker Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Dark Theme Styling & Custom Sliders */
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .panel-card {
+            background-color: #1e1e1e;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+        }
+
+        .panel-header {
+            background-color: #252525;
+            border-bottom: 1px solid #333;
+            border-radius: 12px 12px 0 0;
+        }
+
+        /* Vertical Slider Custom CSS for EQ */
+        input[type="range"][orient="vertical"] {
+            writing-mode: bt-lr; /* IE */
+            -webkit-appearance: slider-vertical; /* WebKit */
+            width: 12px;
+            height: 180px;
+            background: #333;
+            outline: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* Horizontal Slider Custom CSS */
+        input[type="range"].horizontal-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4facfe;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        input[type="range"][data-channel="right"]::-webkit-slider-thumb {
+            background: #fe4f4f;
+        }
+
+        /* Number Input Styling */
+        input[type="number"] {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 4px;
+            padding: 4px;
+            text-align: center;
+            font-size: 0.85rem;
+            width: 65px;
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+        
+        input[type="number"][data-channel="right"]:focus {
+            border-color: #fe4f4f;
+        }
+
+        .btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        .btn:active {
+            transform: translateY(1px);
+        }
+        
+        /* EQ Band Container */
+        .eq-band {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 4px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.02);
+        }
+        .eq-band:hover {
+            background: rgba(255,255,255,0.05);
+        }
+        .eq-label {
+            font-size: 0.75rem;
+            color: #aaa;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-6 lg:p-8">
+
+    <!-- Container Utama -->
+    <div class="max-w-7xl mx-auto space-y-6">
+
+        <!-- HEADER & MEDIA PLAYER -->
+        <header class="panel-card p-6 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <i class="fas fa-sliders-h text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">DLMS Web</h1>
+                    <p class="text-sm text-gray-400">Digital Loudspeaker Management System (Pure Brickwall DSP Engine)</p>
+                </div>
+            </div>
+
+            <div class="flex-1 w-full max-w-2xl bg-black/30 p-4 rounded-xl border border-gray-700">
+                <div class="flex flex-col sm:flex-row gap-3 mb-3">
+                    <input type="text" id="youtube-url" placeholder="URL Audio (.mp3 / .wav)" class="flex-1 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-white">
+                    <label class="btn bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded text-sm cursor-pointer whitespace-nowrap text-center">
+                        <i class="fas fa-folder-open mr-2"></i>Upload File
+                        <input type="file" id="audio-upload" accept="audio/*" class="hidden">
+                    </label>
+                    <button id="btn-load" class="btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-semibold shadow-lg shadow-blue-500/30">
+                        Load
+                    </button>
+                </div>
+                <div class="flex justify-center gap-4">
+                    <button id="btn-play" class="btn bg-green-600 hover:bg-green-700 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg shadow-green-500/30">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button id="btn-pause" class="btn bg-yellow-600 hover:bg-yellow-700 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg shadow-yellow-500/30">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button id="btn-stop" class="btn bg-red-600 hover:bg-red-700 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg shadow-red-500/30">
+                        <i class="fas fa-stop"></i>
+                    </button>
+                </div>
+                <audio id="audio-player" class="hidden" loop></audio>
+                <div id="status-text" class="text-center text-xs text-gray-400 mt-3">Status: Menunggu Audio...</div>
+            </div>
+        </header>
+
+        <!-- GRAFIK RTA SPEKTRUM FREKUENSI REAL-TIME -->
+        <div class="panel-card p-4 flex flex-col gap-2">
+            <div class="flex justify-between items-center px-2">
+                <h2 class="font-bold text-sm text-gray-300 flex items-center gap-2">
+                    <i class="fas fa-chart-line text-blue-400"></i>
+                    Frequency Response Spectrum Analyzer (Brickwall Precision RTA)
+                </h2>
+                <div class="flex items-center gap-4 text-xs font-semibold">
+                    <span class="flex items-center gap-1 text-blue-400">
+                        <span class="w-3 h-3 bg-blue-500 inline-block rounded-full"></span> Left Channel
+                    </span>
+                    <span class="flex items-center gap-1 text-red-400">
+                        <span class="w-3 h-3 bg-red-500 inline-block rounded-full"></span> Right Channel
+                    </span>
+                </div>
+            </div>
+            <div class="relative w-full h-48 bg-black/50 rounded-lg overflow-hidden border border-gray-800">
+                <canvas id="rta-canvas" class="w-full h-full block"></canvas>
+            </div>
+        </div>
+
+        <!-- KONTROL UTAMA (MASTER) & PRESET -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Kontrol Master -->
+            <div class="panel-card lg:col-span-2 flex flex-col">
+                <div class="panel-header px-6 py-3 flex justify-between items-center">
+                    <h2 class="font-bold text-lg"><i class="fas fa-cogs mr-2 text-gray-400"></i>Master Control</h2>
+                    <button id="btn-reset-all" class="text-xs bg-red-500/20 hover:bg-red-500/40 text-red-400 px-3 py-1 rounded border border-red-500/30 transition-colors">
+                        Reset Semua
+                    </button>
+                </div>
+                <div class="p-6 grid grid-cols-2 sm:grid-cols-4 gap-6 flex-1 items-center">
+                    <!-- Master Volume -->
+                    <div class="flex flex-col items-center gap-2">
+                        <label class="text-sm font-semibold text-gray-300">Master Vol</label>
+                        <input type="range" id="master-vol-slider" class="horizontal-slider dsp-input" min="0" max="2" step="0.01" value="1">
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="master-vol-num" class="dsp-input" min="0" max="2" step="0.01" value="1">
+                            <span class="text-xs text-gray-500">x</span>
+                        </div>
+                    </div>
+                    <!-- Left Gain -->
+                    <div class="flex flex-col items-center gap-2">
+                        <label class="text-sm font-semibold text-blue-400">Left Gain</label>
+                        <input type="range" id="master-left-gain-slider" class="horizontal-slider dsp-input" min="-24" max="24" step="0.1" value="0">
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="master-left-gain-num" class="dsp-input" min="-24" max="24" step="0.1" value="0">
+                            <span class="text-xs text-gray-500">dB</span>
+                        </div>
+                    </div>
+                    <!-- Right Gain -->
+                    <div class="flex flex-col items-center gap-2">
+                        <label class="text-sm font-semibold text-red-400">Right Gain</label>
+                        <input type="range" id="master-right-gain-slider" class="horizontal-slider dsp-input" data-channel="right" min="-24" max="24" step="0.1" value="0">
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="master-right-gain-num" class="dsp-input" data-channel="right" min="-24" max="24" step="0.1" value="0">
+                            <span class="text-xs text-gray-500">dB</span>
+                        </div>
+                    </div>
+                    <!-- Balance -->
+                    <div class="flex flex-col items-center gap-2">
+                        <label class="text-sm font-semibold text-gray-300">Balance L/R</label>
+                        <input type="range" id="master-balance-slider" class="horizontal-slider dsp-input" min="-1" max="1" step="0.01" value="0">
+                        <div class="flex items-center gap-1 w-full justify-between px-2">
+                            <span class="text-xs text-blue-400">L</span>
+                            <input type="number" id="master-balance-num" class="dsp-input" min="-1" max="1" step="0.01" value="0">
+                            <span class="text-xs text-red-400">R</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manajer Preset -->
+            <div class="panel-card flex flex-col">
+                <div class="panel-header px-6 py-3">
+                    <h2 class="font-bold text-lg"><i class="fas fa-save mr-2 text-gray-400"></i>Preset Manager</h2>
+                </div>
+                <div class="p-6 flex flex-col gap-4 flex-1">
+                    <div class="flex gap-2">
+                        <input type="text" id="preset-name" placeholder="Nama Preset" class="flex-1 bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-white">
+                        <button id="btn-save-preset" class="btn bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-semibold">Simpan</button>
+                    </div>
+                    <select id="preset-list" class="bg-gray-800 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none text-white w-full">
+                        <option value="">-- Pilih Preset --</option>
+                    </select>
+                    <div class="flex gap-2 justify-between mt-auto">
+                        <button id="btn-load-preset" class="btn bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-semibold flex-1">Load</button>
+                        <button id="btn-delete-preset" class="btn bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-semibold flex-1">Hapus</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL STRIP KANAL (KIRI & KANAN) -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            
+            <!-- KANAL KIRI (LEFT) -->
+            <div class="panel-card flex flex-col border-t-4 border-t-blue-500">
+                <div class="panel-header px-6 py-3 flex justify-between items-center">
+                    <h2 class="font-bold text-lg text-blue-400"><i class="fas fa-volume-down mr-2"></i>Left Channel</h2>
+                    <button id="btn-reset-left" class="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded transition-colors">Reset L</button>
+                </div>
+                
+                <div class="p-6 space-y-6">
+                    <!-- Delay & Crossover Left -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 p-4 bg-black/20 rounded-lg border border-gray-800">
+                        <!-- Delay Left -->
+                        <div class="flex flex-col gap-2">
+                            <label class="text-sm font-semibold text-gray-300"><i class="fas fa-clock text-blue-400 mr-1"></i>Delay</label>
+                            <input type="range" id="left-delay-slider" class="horizontal-slider dsp-input" min="0" max="500" step="0.1" value="0">
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="left-delay-num" class="dsp-input" min="0" max="500" step="0.1" value="0">
+                                <span class="text-xs text-gray-500">ms</span>
+                            </div>
+                        </div>
+                        <!-- HPF Left -->
+                        <div class="flex flex-col gap-2">
+                            <label class="text-sm font-semibold text-gray-300">HPF (Brickwall Cut)</label>
+                            <input type="range" id="left-hpf-slider" class="horizontal-slider dsp-input" min="0" max="1" step="0.001" value="0">
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="left-hpf-num" class="dsp-input" min="30" max="20000" step="1" value="30">
+                                <span class="text-xs text-gray-500">Hz</span>
+                            </div>
+                        </div>
+                        <!-- LPF Left -->
+                        <div class="flex flex-col gap-2">
+                            <label class="text-sm font-semibold text-gray-300">LPF (Brickwall Cut)</label>
+                            <input type="range" id="left-lpf-slider" class="horizontal-slider dsp-input" min="0" max="1" step="0.001" value="1">
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="left-lpf-num" class="dsp-input" min="30" max="20000" step="1" value="20000">
+                                <span class="text-xs text-gray-500">Hz</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Equalizer Left -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-400 mb-3 text-center">Graphic Equalizer (Left)</h3>
+                        <div class="flex justify-between gap-1 overflow-x-auto pb-4" id="eq-container-left">
+                            <!-- Dibuat via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KANAL KANAN (RIGHT) -->
+            <div class="panel-card flex flex-col border-t-4 border-t-red-500">
+                <div class="panel-header px-6 py-3 flex justify-between items-center">
+                    <h2 class="font-bold text-lg text-red-400"><i class="fas fa-volume-up mr-2"></i>Right Channel</h2>
+                    <button id="btn-reset-right" class="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded transition-colors">Reset R</button>
+                </div>
+                
+                <div class="p-6 space-y-6">
+                    <!-- Delay & Crossover Right -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 p-4 bg-black/20 rounded-lg border border-gray-800">
+                        <!-- Delay Right -->
+                        <div class="flex flex-col gap-2">
+                            <label class="text-sm font-semibold text-gray-300"><i class="fas fa-clock text-red-400 mr-1"></i>Delay</label>
+                            <input type="range" id="right-delay-slider" data-channel="right" class="horizontal-slider dsp-input" min="0" max="500" step="0.1" value="0">
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="right-delay-num" data-channel="right" class="dsp-input" min="0" max="500" step="0.1" value="0">
+                                <span class="text-xs text-gray-500">ms</span>
+                            </div>
+                        </div>
+                        <!-- HPF Right -->
+                        <div class="flex flex-col gap-2">
+                            <label class="text-sm font-semibold text-gray-300">HPF (Brickwall Cut)</label>
+                            <input type="range" id="right-hpf-slider" data-channel="right" class="horizontal-slider dsp-input" min="0" max="1" step="0.001" value="0">
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="right-hpf-num" data-channel="right" class="dsp-input" min="30" max="20000" step="1" value="30">
+                                <span class="text-xs text-gray-500">Hz</span>
+                            </div>
+                        </div>
+                        <!-- LPF Right -->
+                        <div class="flex flex-col gap-2">
+                            <label class="text-sm font-semibold text-gray-300">LPF (Brickwall Cut)</label>
+                            <input type="range" id="right-lpf-slider" data-channel="right" class="horizontal-slider dsp-input" min="0" max="1" step="0.001" value="1">
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="right-lpf-num" data-channel="right" class="dsp-input" min="30" max="20000" step="1" value="20000">
+                                <span class="text-xs text-gray-500">Hz</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Equalizer Right -->
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-400 mb-3 text-center">Graphic Equalizer (Right)</h3>
+                        <div class="flex justify-between gap-1 overflow-x-auto pb-4" id="eq-container-right">
+                            <!-- Dibuat via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- LOGIKA JAVASCRIPT UTAMA -->
+    <script>
+        /**
+         * Konfigurasi DLMS
+         */
+        const CONFIG = {
+            eqFrequencies: [30, 60, 90, 125, 250, 500, 1000, 2000, 4000, 8000, 12000, 16000, 20000],
+            minFreq: 30,
+            maxFreq: 20000,
+            minGain: -24,
+            maxGain: 24,
+            maxDelayMs: 500,
+            defaultState: {
+                master: { vol: 1, leftGain: 0, rightGain: 0, balance: 0 },
+                left: { delay: 0, hpf: 30, lpf: 20000, eq: Array(13).fill(0) },
+                right: { delay: 0, hpf: 30, lpf: 20000, eq: Array(13).fill(0) }
+            }
+        };
+
+        /**
+         * FUNGSI BANTUAN MATEMATIKA LOGARITMIK (30 Hz - 20,000 Hz)
+         */
+        function sliderToFreq(val) {
+            const minLog = Math.log10(CONFIG.minFreq);
+            const maxLog = Math.log10(CONFIG.maxFreq);
+            const freq = Math.pow(10, minLog + val * (maxLog - minLog));
+            return Math.round(freq);
+        }
+
+        function freqToSlider(freq) {
+            const clampedFreq = Math.max(CONFIG.minFreq, Math.min(CONFIG.maxFreq, freq));
+            const minLog = Math.log10(CONFIG.minFreq);
+            const maxLog = Math.log10(CONFIG.maxFreq);
+            return (Math.log10(clampedFreq) - minLog) / (maxLog - minLog);
+        }
+
+        /**
+         * MESIN AUDIO: Pemrosesan Terpisah Web Audio API dengan Hybrid Brickwall DSP Engine
+         */
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.isInitialized = false;
+                this.nodes = {};
+            }
+
+            init(audioElement) {
+                if (this.isInitialized) return;
+                
+                // Buat AudioContext
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // 1. Ambil Sumber Audio
+                const source = this.ctx.createMediaElementSource(audioElement);
+                
+                // 2. Pemisah Channel (Channel Splitter)
+                const splitter = this.ctx.createChannelSplitter(2);
+                source.connect(splitter);
+
+                // 3. Bangun Jalur Audio Terpisah Kiri (0) dan Kanan (1)
+                this.nodes.left = this.buildChannelPath(0, splitter);
+                this.nodes.right = this.buildChannelPath(1, splitter);
+
+                // 4. Penggabung Channel Output
+                const merger = this.ctx.createChannelMerger(2);
+                
+                // Hubungkan secara eksplisit ke output fisik (0 = Left Speaker, 1 = Right Speaker)
+                this.nodes.left.gainNode.connect(merger, 0, 0);
+                this.nodes.right.gainNode.connect(merger, 0, 1);
+
+                // 5. Node Master Volume
+                this.nodes.masterVol = this.ctx.createGain();
+                merger.connect(this.nodes.masterVol);
+                
+                // 6. Sambungkan ke Speaker / Output Browser
+                this.nodes.masterVol.connect(this.ctx.destination);
+
+                this.isInitialized = true;
+            }
+
+            buildChannelPath(channelIndex, splitter) {
+                // Delay Node (Maksimal 1 Detik)
+                const delayNode = this.ctx.createDelay(1.0);
+                delayNode.delayTime.value = 0;
+
+                // --- BRICKWALL HYBRID ENGINE: 8-STAGE ULTRA CASCADED FILTERS ---
+                // 8 buah High-pass Filter beruntut seri -> High-Slope Cutoff (up to 96dB/Oct)
+                const hpfCascade = Array.from({ length: 8 }, () => {
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'highpass';
+                    filter.Q.value = 0.7071;
+                    return filter;
+                });
+
+                // 8 buah Low-pass Filter beruntut seri -> High-Slope Cutoff (up to 96dB/Oct)
+                const lpfCascade = Array.from({ length: 8 }, () => {
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'lowpass';
+                    filter.Q.value = 0.7071;
+                    return filter;
+                });
+
+                // Extra Notch/Bandstop Attenuators khusus pemblokir kebocoran
+                const hpfNotch = this.ctx.createBiquadFilter();
+                hpfNotch.type = 'highpass';
+                hpfNotch.Q.value = 1.0;
+
+                const lpfNotch = this.ctx.createBiquadFilter();
+                lpfNotch.type = 'lowpass';
+                lpfNotch.Q.value = 1.0;
+
+                // Band Equalizer (Graphic EQ)
+                const eqBands = CONFIG.eqFrequencies.map(freq => {
+                    const filter = this.ctx.createBiquadFilter();
+                    filter.type = 'peaking';
+                    filter.frequency.value = freq;
+                    filter.Q.value = 3.0; // Narrow Q untuk isolasi mutlak
+                    return filter;
+                });
+
+                // Node Gain khusus untuk tiap channel
+                const gainNode = this.ctx.createGain();
+
+                // Analyser Node khusus RTA Visualizer per Kanal
+                const analyser = this.ctx.createAnalyser();
+                analyser.fftSize = 2048; 
+                analyser.smoothingTimeConstant = 0.7;
+
+                // Routing Seri: Splitter -> Delay -> HPF[0..7] -> HPFNotch -> LPF[0..7] -> LPFNotch -> EQ BANDS[0..12] -> Gain -> Analyser
+                splitter.connect(delayNode, channelIndex);
+                
+                // Connect HPF Cascade
+                delayNode.connect(hpfCascade[0]);
+                for (let i = 0; i < 7; i++) {
+                    hpfCascade[i].connect(hpfCascade[i + 1]);
+                }
+
+                hpfCascade[7].connect(hpfNotch);
+                hpfNotch.connect(lpfCascade[0]);
+
+                // Connect LPF Cascade
+                for (let i = 0; i < 7; i++) {
+                    lpfCascade[i].connect(lpfCascade[i + 1]);
+                }
+                
+                lpfCascade[7].connect(lpfNotch);
+
+                // Connect LPF -> EQ
+                let lastNode = lpfNotch;
+                eqBands.forEach(band => {
+                    lastNode.connect(band);
+                    lastNode = band;
+                });
+                lastNode.connect(gainNode);
+                gainNode.connect(analyser);
+
+                return { delayNode, hpfCascade, hpfNotch, lpfCascade, lpfNotch, eqBands, gainNode, analyser };
+            }
+
+            // Konversi nilai Desibel ke Linear Gain
+            dbToLinear(db) {
+                if (db <= -24) return 0; // Mute Total jika diset ke nilai terendah (-24 dB)
+                return Math.pow(10, db / 20);
+            }
+
+            // Update parameter Master & Channel secara Real-time
+            updateMaster(state) {
+                if (!this.isInitialized) return;
+                
+                // Master Volume
+                this.nodes.masterVol.gain.setTargetAtTime(state.master.vol, this.ctx.currentTime, 0.01);
+
+                // Perhitungan Keseimbangan (Balance)
+                const bal = parseFloat(state.master.balance);
+                const lBalMult = bal > 0 ? (1 - bal) : 1;
+                const rBalMult = bal < 0 ? (1 + bal) : 1;
+
+                // Hitung Gain Linear Terpisah
+                const lGainLinear = this.dbToLinear(state.master.leftGain);
+                const rGainLinear = this.dbToLinear(state.master.rightGain);
+
+                const finalLeftGain = lGainLinear * lBalMult;
+                const finalRightGain = rGainLinear * rBalMult;
+
+                // Terapkan Gain ke masing-masing channel
+                this.nodes.left.gainNode.gain.setTargetAtTime(finalLeftGain, this.ctx.currentTime, 0.01);
+                this.nodes.right.gainNode.gain.setTargetAtTime(finalRightGain, this.ctx.currentTime, 0.01);
+            }
+
+            updateChannel(channel, state) {
+                if (!this.isInitialized) return;
+                const nodes = this.nodes[channel];
+                const chState = state[channel];
+                
+                // Delay (ms -> Detik)
+                const delayInSeconds = (chState.delay || 0) / 1000;
+                nodes.delayNode.delayTime.setTargetAtTime(delayInSeconds, this.ctx.currentTime, 0.01);
+
+                // Update HPF Brickwall Cascade
+                nodes.hpfCascade.forEach(filter => {
+                    filter.frequency.setTargetAtTime(chState.hpf, this.ctx.currentTime, 0.01);
+                });
+                nodes.hpfNotch.frequency.setTargetAtTime(chState.hpf, this.ctx.currentTime, 0.01);
+
+                // Update LPF Brickwall Cascade
+                nodes.lpfCascade.forEach(filter => {
+                    filter.frequency.setTargetAtTime(chState.lpf, this.ctx.currentTime, 0.01);
+                });
+                nodes.lpfNotch.frequency.setTargetAtTime(chState.lpf, this.ctx.currentTime, 0.01);
+                
+                // Active Suppression Logic pada EQ Faders untuk frekuensi di luar batas cutoff
+                chState.eq.forEach((userGain, index) => {
+                    const freq = CONFIG.eqFrequencies[index];
+                    let effectiveGain = userGain;
+
+                    // Jika frekuensi EQ berada di luar LPF (misal > 125 Hz pada Sub), paksa gain ke MUTE/Pangkas Total
+                    if (freq > chState.lpf) {
+                        effectiveGain = -40; // Hard Cutoff Suppressor
+                    } 
+                    // Jika frekuensi EQ berada di bawah HPF (misal < 70 Hz), paksa gain ke MUTE
+                    else if (freq < chState.hpf) {
+                        effectiveGain = -40; // Hard Cutoff Suppressor
+                    }
+
+                    nodes.eqBands[index].gain.setTargetAtTime(effectiveGain, this.ctx.currentTime, 0.01);
+                });
+            }
+        }
+
+        /**
+         * RTA VISUALIZER: Render Grafik Spektrum Frekuensi Canvas Real-time
+         */
+        class RTAVisualizer {
+            constructor(audioEngine) {
+                this.audioEngine = audioEngine;
+                this.canvas = document.getElementById('rta-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.animFrameId = null;
+
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+            }
+
+            resizeCanvas() {
+                if (!this.canvas) return;
+                this.canvas.width = this.canvas.clientWidth;
+                this.canvas.height = this.canvas.clientHeight;
+            }
+
+            start() {
+                if (!this.animFrameId) {
+                    this.draw();
+                }
+            }
+
+            stop() {
+                if (this.animFrameId) {
+                    cancelAnimationFrame(this.animFrameId);
+                    this.animFrameId = null;
+                }
+            }
+
+            draw() {
+                this.animFrameId = requestAnimationFrame(() => this.draw());
+
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                const ctx = this.ctx;
+
+                // Clear background
+                ctx.fillStyle = 'rgba(15, 15, 18, 1)';
+                ctx.fillRect(0, 0, width, height);
+
+                // Gambar Grid & Skala Frekuensi
+                this.drawGrid(ctx, width, height);
+
+                if (!this.audioEngine.isInitialized) return;
+
+                // Ambil Data Spektrum Float (dalam dBFS -100 dB s/d 0 dB)
+                const analyserL = this.audioEngine.nodes.left.analyser;
+                const bufferLengthL = analyserL.frequencyBinCount;
+                const dataLeft = new Float32Array(bufferLengthL);
+                analyserL.getFloatFrequencyData(dataLeft);
+
+                const analyserR = this.audioEngine.nodes.right.analyser;
+                const bufferLengthR = analyserR.frequencyBinCount;
+                const dataRight = new Float32Array(bufferLengthR);
+                analyserR.getFloatFrequencyData(dataRight);
+
+                // Gambar Garis Spektrum Left (Blue) & Right (Red) dengan Masking Active DSP Cutoff
+                this.drawSpectrumLine(ctx, dataLeft, width, height, '#3b82f6', 2, 'left');
+                this.drawSpectrumLine(ctx, dataRight, width, height, '#ef4444', 2, 'right');
+            }
+
+            drawGrid(ctx, width, height) {
+                ctx.strokeStyle = '#282828';
+                ctx.lineWidth = 1;
+                ctx.font = '9px sans-serif';
+                ctx.fillStyle = '#666';
+
+                // Grid Horizontal (dB Scale: 0dB, -20dB, -40dB, -60dB, -80dB)
+                const dbLevels = [0, -20, -40, -60, -80];
+                dbLevels.forEach(db => {
+                    const y = height * (1 - (db + 80) / 80);
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                    ctx.stroke();
+
+                    ctx.fillText(`${db}dB`, 4, y - 2);
+                });
+
+                // Grid Vertikal (Marker Frekuensi Logaritmik)
+                const markerFreqs = [30, 100, 250, 1000, 4000, 10000, 20000];
+                markerFreqs.forEach(freq => {
+                    const xRatio = freqToSlider(freq);
+                    const x = xRatio * width;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+
+                    const label = freq >= 1000 ? (freq / 1000) + 'k' : freq;
+                    ctx.fillText(label + 'Hz', x + 2, height - 4);
+                });
+            }
+
+            drawSpectrumLine(ctx, floatDbData, width, height, color, lineWidth, channel) {
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = lineWidth;
+
+                const sampleRate = this.audioEngine.ctx.sampleRate;
+                const totalBins = floatDbData.length;
+
+                const currentChannelState = window.currentUIState ? window.currentUIState[channel] : null;
+
+                let isFirstPoint = true;
+                const minDb = -80;
+                const maxDb = 0;
+
+                for (let i = 1; i < totalBins; i++) {
+                    const freq = (i * sampleRate) / (totalBins * 2);
+                    if (freq < CONFIG.minFreq || freq > CONFIG.maxFreq) continue;
+
+                    const x = freqToSlider(freq) * width;
+                    
+                    let dbValue = floatDbData[i];
+
+                    // Masking pemotongan RTA visual secara langsung bila di luar HPF & LPF
+                    if (currentChannelState) {
+                        if (freq > currentChannelState.lpf * 1.05 || freq < currentChannelState.hpf * 0.95) {
+                            dbValue = minDb; // Paksa titik RTA ke paling bawah jika di luar cutoff
+                        }
+                    }
+
+                    if (dbValue < minDb) dbValue = minDb;
+                    if (dbValue > maxDb) dbValue = maxDb;
+
+                    const y = height * (1 - (dbValue - minDb) / (maxDb - minDb));
+
+                    if (isFirstPoint) {
+                        ctx.moveTo(x, y);
+                        isFirstPoint = false;
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+
+                ctx.stroke();
+            }
+        }
+
+        /**
+         * MANAJER PENYIMPANAN PRESET (LocalStorage)
+         */
+        class StorageManager {
+            constructor() {
+                this.STORAGE_KEY = 'dlms_presets';
+                this.presets = this.loadPresets();
+            }
+
+            loadPresets() {
+                const data = localStorage.getItem(this.STORAGE_KEY);
+                return data ? JSON.parse(data) : {};
+            }
+
+            savePreset(name, state) {
+                this.presets[name] = JSON.parse(JSON.stringify(state));
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.presets));
+            }
+
+            deletePreset(name) {
+                if(this.presets[name]) {
+                    delete this.presets[name];
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.presets));
+                }
+            }
+
+            getPreset(name) {
+                return this.presets[name];
+            }
+
+            getPresetNames() {
+                return Object.keys(this.presets);
+            }
+        }
+
+        /**
+         * MANAJER UI & SINKRONISASI TAMPILAN
+         */
+        class UIManager {
+            constructor(audioEngine, storageManager, rtaVisualizer) {
+                this.audioEngine = audioEngine;
+                this.storageManager = storageManager;
+                this.rtaVisualizer = rtaVisualizer;
+                this.state = JSON.parse(JSON.stringify(CONFIG.defaultState));
+                window.currentUIState = this.state; // Ref untuk RTA Masking
+                this.audioElement = document.getElementById('audio-player');
+                
+                this.initUI();
+                this.bindEvents();
+                this.updatePresetDropdown();
+            }
+
+            formatFreq(f) {
+                return f >= 1000 ? (f/1000) + 'k' : f;
+            }
+
+            // Membuat Tampilan Slider EQ secara Dinamis
+            generateEQBands(channel) {
+                const container = document.getElementById(`eq-container-${channel}`);
+                container.innerHTML = '';
+                
+                CONFIG.eqFrequencies.forEach((freq, index) => {
+                    const bandDiv = document.createElement('div');
+                    bandDiv.className = 'eq-band';
+                    
+                    bandDiv.innerHTML = `
+                        <span class="eq-label">${this.formatFreq(freq)}</span>
+                        <input type="range" orient="vertical" 
+                            id="eq-${channel}-slider-${index}" 
+                            class="dsp-input"
+                            data-channel="${channel}"
+                            data-index="${index}"
+                            min="${CONFIG.minGain}" max="${CONFIG.maxGain}" step="0.5" value="0">
+                        <input type="number" 
+                            id="eq-${channel}-num-${index}" 
+                            class="dsp-input"
+                            data-channel="${channel}"
+                            data-index="${index}"
+                            min="${CONFIG.minGain}" max="${CONFIG.maxGain}" step="0.5" value="0">
+                    `;
+                    container.appendChild(bandDiv);
+                });
+            }
+
+            initUI() {
+                this.generateEQBands('left');
+                this.generateEQBands('right');
+                this.syncUIToState();
+            }
+
+            // Menyinkronkan Tampilan DOM dengan Nilai State
+            syncUIToState() {
+                // Master
+                this.setSyncValues('master-vol', this.state.master.vol);
+                this.setSyncValues('master-left-gain', this.state.master.leftGain);
+                this.setSyncValues('master-right-gain', this.state.master.rightGain);
+                this.setSyncValues('master-balance', this.state.master.balance);
+                
+                // Left Channel
+                this.setSyncValues('left-delay', this.state.left.delay || 0);
+                this.setFilterSyncValues('left-hpf', this.state.left.hpf);
+                this.setFilterSyncValues('left-lpf', this.state.left.lpf);
+                this.state.left.eq.forEach((val, idx) => this.setSyncValues(`eq-left`, val, idx));
+                
+                // Right Channel
+                this.setSyncValues('right-delay', this.state.right.delay || 0);
+                this.setFilterSyncValues('right-hpf', this.state.right.hpf);
+                this.setFilterSyncValues('right-lpf', this.state.right.lpf);
+                this.state.right.eq.forEach((val, idx) => this.setSyncValues(`eq-right`, val, idx));
+            }
+
+            setSyncValues(baseId, value, index = null) {
+                const idSlider = index !== null ? `${baseId}-slider-${index}` : `${baseId}-slider`;
+                const idNum = index !== null ? `${baseId}-num-${index}` : `${baseId}-num`;
+                
+                const slider = document.getElementById(idSlider);
+                const num = document.getElementById(idNum);
+                
+                if(slider && num) {
+                    slider.value = value;
+                    num.value = value;
+                }
+            }
+
+            setFilterSyncValues(baseId, freqValue) {
+                const slider = document.getElementById(`${baseId}-slider`);
+                const num = document.getElementById(`${baseId}-num`);
+                
+                if (slider && num) {
+                    slider.value = freqToSlider(freqValue);
+                    num.value = freqValue;
+                }
+            }
+
+            // Menangani Input Pengguna secara Real-time khusus kontrol DSP
+            handleDSPInput(target) {
+                if (!target.classList.contains('dsp-input')) return;
+                
+                if (target.value === '') return;
+
+                let rawValue = parseFloat(target.value);
+                if (isNaN(rawValue)) return;
+
+                const id = target.id;
+                const isSlider = target.type === 'range';
+
+                // Penanganan Khusus untuk Filter HPF / LPF (Menggunakan Skala Logaritmik)
+                if (id.includes('-hpf-') || id.includes('-lpf-')) {
+                    const isLeft = id.startsWith('left');
+                    const isHPF = id.includes('-hpf-');
+                    const channel = isLeft ? 'left' : 'right';
+                    const filterType = isHPF ? 'hpf' : 'lpf';
+
+                    let freqHz;
+                    if (isSlider) {
+                        freqHz = sliderToFreq(rawValue);
+                        const numInput = document.getElementById(id.replace('-slider', '-num'));
+                        if (numInput) numInput.value = freqHz;
+                    } else {
+                        freqHz = Math.max(CONFIG.minFreq, Math.min(CONFIG.maxFreq, rawValue));
+                        const sliderInput = document.getElementById(id.replace('-num', '-slider'));
+                        if (sliderInput) sliderInput.value = freqToSlider(freqHz);
+                    }
+
+                    this.state[channel][filterType] = freqHz;
+                } 
+                // Penanganan Input DSP Standar (Master, Delay & EQ)
+                else {
+                    const siblingId = target.id.replace(isSlider ? '-slider' : '-num', isSlider ? '-num' : '-slider');
+                    const sibling = document.getElementById(siblingId);
+                    if(sibling) sibling.value = rawValue;
+
+                    if(id.startsWith('master-vol')) this.state.master.vol = rawValue;
+                    else if(id.startsWith('master-left-gain')) this.state.master.leftGain = rawValue;
+                    else if(id.startsWith('master-right-gain')) this.state.master.rightGain = rawValue;
+                    else if(id.startsWith('master-balance')) this.state.master.balance = rawValue;
+                    else if(id.startsWith('left-delay')) this.state.left.delay = rawValue;
+                    else if(id.startsWith('right-delay')) this.state.right.delay = rawValue;
+                    else if(id.startsWith('eq-left')) {
+                        const idx = parseInt(target.dataset.index);
+                        this.state.left.eq[idx] = rawValue;
+                    }
+                    else if(id.startsWith('eq-right')) {
+                        const idx = parseInt(target.dataset.index);
+                        this.state.right.eq[idx] = rawValue;
+                    }
+                }
+
+                // Jalankan Pembaruan Pemrosesan Audio Real-time
+                this.audioEngine.updateMaster(this.state);
+                this.audioEngine.updateChannel('left', this.state);
+                this.audioEngine.updateChannel('right', this.state);
+            }
+
+            updatePresetDropdown() {
+                const select = document.getElementById('preset-list');
+                select.innerHTML = '<option value="">-- Pilih Preset --</option>';
+                const names = this.storageManager.getPresetNames();
+                names.forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    select.appendChild(opt);
+                });
+            }
+
+            bindEvents() {
+                // Event listener khusus untuk input kontrol audio/DSP
+                document.addEventListener('input', (e) => {
+                    if (e.target.classList.contains('dsp-input')) {
+                        this.handleDSPInput(e.target);
+                    }
+                });
+
+                // Terapkan penanganan jika kolom angka ditinggalkan kosong (blur)
+                document.addEventListener('change', (e) => {
+                    if (e.target.classList.contains('dsp-input')) {
+                        if (e.target.value === '' || isNaN(parseFloat(e.target.value))) {
+                            this.syncUIToState();
+                        } else {
+                            this.handleDSPInput(e.target);
+                        }
+                    }
+                });
+
+                const setStatus = (msg, isError=false) => {
+                    const el = document.getElementById('status-text');
+                    el.textContent = msg;
+                    el.className = `text-center text-xs mt-3 ${isError ? 'text-red-400' : 'text-green-400'}`;
+                };
+
+                // Pemuatan Audio
+                document.getElementById('btn-load').addEventListener('click', () => {
+                    const url = document.getElementById('youtube-url').value;
+                    if(url.includes('youtube.com') || url.includes('youtu.be')) {
+                        setStatus("Perhatian: Pemrosesan langsung dari YouTube diblokir oleh CORS. Gunakan URL .mp3/.wav atau Upload File.", true);
+                    } else if (url) {
+                        this.audioElement.src = url;
+                        setStatus("URL Audio dimuat. Siap diputar.");
+                    }
+                });
+
+                document.getElementById('audio-upload').addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if(file) {
+                        const fileURL = URL.createObjectURL(file);
+                        this.audioElement.src = fileURL;
+                        setStatus(`File dimuat: ${file.name}`);
+                    }
+                });
+
+                document.getElementById('btn-play').addEventListener('click', () => {
+                    if (!this.audioElement.src) {
+                        setStatus("Harap masukkan URL Audio atau Upload file terlebih dahulu!", true);
+                        return;
+                    }
+                    
+                    this.audioEngine.init(this.audioElement);
+                    if(this.audioEngine.ctx.state === 'suspended') {
+                        this.audioEngine.ctx.resume();
+                    }
+                    
+                    this.audioElement.play().then(() => {
+                        setStatus("Sedang Memutar Audio...");
+                        this.audioEngine.updateMaster(this.state);
+                        this.audioEngine.updateChannel('left', this.state);
+                        this.audioEngine.updateChannel('right', this.state);
+                        this.rtaVisualizer.start();
+                    }).catch(() => {
+                        setStatus("Gagal memutar audio. Pastikan format file valid.", true);
+                    });
+                });
+
+                document.getElementById('btn-pause').addEventListener('click', () => {
+                    this.audioElement.pause();
+                    this.rtaVisualizer.stop();
+                    setStatus("Audio Dijeda.");
+                });
+
+                document.getElementById('btn-stop').addEventListener('click', () => {
+                    this.audioElement.pause();
+                    this.audioElement.currentTime = 0;
+                    this.rtaVisualizer.stop();
+                    setStatus("Audio Diberhentikan.");
+                });
+
+                // Reset Handlers
+                document.getElementById('btn-reset-all').addEventListener('click', () => {
+                    if(confirm("Reset seluruh parameter ke default?")) {
+                        this.state = JSON.parse(JSON.stringify(CONFIG.defaultState));
+                        this.syncUIToState();
+                        this.audioEngine.updateMaster(this.state);
+                        this.audioEngine.updateChannel('left', this.state);
+                        this.audioEngine.updateChannel('right', this.state);
+                    }
+                });
+
+                document.getElementById('btn-reset-left').addEventListener('click', () => {
+                    this.state.left = JSON.parse(JSON.stringify(CONFIG.defaultState.left));
+                    this.syncUIToState();
+                    this.audioEngine.updateChannel('left', this.state);
+                });
+
+                document.getElementById('btn-reset-right').addEventListener('click', () => {
+                    this.state.right = JSON.parse(JSON.stringify(CONFIG.defaultState.right));
+                    this.syncUIToState();
+                    this.audioEngine.updateChannel('right', this.state);
+                });
+
+                // Manajer Preset
+                document.getElementById('btn-save-preset').addEventListener('click', () => {
+                    const name = document.getElementById('preset-name').value.trim();
+                    if(!name) return alert("Masukkan nama preset!");
+                    this.storageManager.savePreset(name, this.state);
+                    this.updatePresetDropdown();
+                    document.getElementById('preset-list').value = name;
+                    document.getElementById('preset-name').value = '';
+                    alert("Preset berhasil disimpan!");
+                });
+
+                document.getElementById('btn-load-preset').addEventListener('click', () => {
+                    const name = document.getElementById('preset-list').value;
+                    if(!name) return alert("Pilih preset yang ingin dimuat!");
+                    const loadedState = this.storageManager.getPreset(name);
+                    if(loadedState) {
+                        this.state = JSON.parse(JSON.stringify(loadedState));
+                        this.syncUIToState();
+                        this.audioEngine.updateMaster(this.state);
+                        this.audioEngine.updateChannel('left', this.state);
+                        this.audioEngine.updateChannel('right', this.state);
+                    }
+                });
+
+                document.getElementById('btn-delete-preset').addEventListener('click', () => {
+                    const name = document.getElementById('preset-list').value;
+                    if(!name) return alert("Pilih preset yang ingin dihapus!");
+                    if(confirm(`Hapus preset "${name}"?`)) {
+                        this.storageManager.deletePreset(name);
+                        this.updatePresetDropdown();
+                    }
+                });
+            }
+        }
+
+        // Inisialisasi Aplikasi saat DOM Siap
+        document.addEventListener('DOMContentLoaded', () => {
+            const audioEngine = new AudioEngine();
+            const storageManager = new StorageManager();
+            const rtaVisualizer = new RTAVisualizer(audioEngine);
+            new UIManager(audioEngine, storageManager, rtaVisualizer);
+        });
+    </script>
+    <script src="sw.js"></script>
+</body>
+</html>
